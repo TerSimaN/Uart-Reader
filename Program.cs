@@ -1,15 +1,13 @@
 ﻿// Create a project with the .NET 7 C# Console App template.
-// Run 'dotnet add package Microsoft.Windows.Compatibility --version 8.0.0-rc.2.23479.10' in the console.
+// Run 'dotnet add package System.IO.Ports --version 7.0.0' in the console.
 // Replace the code in Program.cs with this code.
 
 using System.IO.Ports;
 
-public class PortReader
+public class Program
 {
-    static readonly string filePath = @".\serialPortResponse.txt";
-    static readonly DateOnly dateOnly = DateOnly.FromDateTime(DateTime.Now);
-    static readonly string currentDate = $"{dateOnly.Day}.{dateOnly.Month}.{dateOnly.Year}";
-    static string contentToWrite = "";
+    static readonly DateTime currentDateTime = DateTime.Now;
+    static readonly string filePath = @$".\SerialPortResponseFiles\serialPortResponse_{currentDateTime.ToString("yyyyMMddHHmmss")}.txt";
     static bool @continue;
     static SerialPort serialPort = new SerialPort();
 
@@ -17,11 +15,12 @@ public class PortReader
     {
         StringComparer stringComparer = StringComparer.OrdinalIgnoreCase;
         Thread readThread = new Thread(Read);
+        GenerateResponseFile();
 
         // Create a new SerialPort object with default settings.
         serialPort = new SerialPort
         {
-            PortName = "COM3",
+            PortName = SetPortName(serialPort.PortName),
             BaudRate = 9600,
             Parity = Parity.None,
             DataBits = 8,
@@ -55,43 +54,59 @@ public class PortReader
 
     public static void Read()
     {
-        while (@continue)
-        {
-            try
-            {
-                DateTime dateTime = DateTime.Now;
-                TimeOnly timeOnly = TimeOnly.FromDateTime(dateTime);
-                string timeOnlyHour = $"{((timeOnly.Hour < 10) ? $"0{timeOnly.Hour}" : $"{timeOnly.Hour}")}";
-                string timeOnlyMinute = $"{((timeOnly.Minute < 10) ? $"0{timeOnly.Minute}" : $"{timeOnly.Minute}")}";
-                string timeOnlySecond = $"{((timeOnly.Second < 10) ? $"0{timeOnly.Second}" : $"{timeOnly.Second}")}";
-                string timeOnlyMillisecond = $"{((timeOnly.Millisecond < 100) && (timeOnly.Millisecond >= 10) ? $"0{timeOnly.Millisecond}" : (
-                    (timeOnly.Millisecond < 10) ? $"00{timeOnly.Millisecond}" : $"{timeOnly.Millisecond}")
-                )}";
-                string currentTime = $"{timeOnlyHour}:{timeOnlyMinute}:{timeOnlySecond}.{timeOnlyMillisecond}";
-                
-                string readValue = serialPort.ReadLine();
-                contentToWrite = $"[{currentDate}]:[{currentTime}] {readValue}";
-                WriteToFile(contentToWrite);
-            }
-            catch (TimeoutException) { }
-        }
-    }
-
-    public static void WriteToFile(string content)
-    {
         if (!File.Exists(filePath))
         {
-            using (StreamWriter sw = File.CreateText(filePath))
-            {
-                sw.WriteLine(content);
-            }
+            Console.WriteLine($"File {filePath} does not exist!");
         }
         else
         {
             using (StreamWriter sw = File.AppendText(filePath))
             {
-                sw.WriteLine(content);
+                while (@continue)
+                {
+                    try
+                    {
+                        DateTime dateTimeNow = DateTime.Now;
+                        string readValue = serialPort.ReadLine();
+                        sw.WriteLine($"[{dateTimeNow.ToString("yyyy-MM-ddTHH:mm:ss.fff")}] {readValue}");
+                    }
+                    catch (TimeoutException) { }
+                }
             }
+        }
+    }
+
+    /// <summary>
+    /// Display Port values and prompt user to enter a port.
+    /// </summary>
+    /// <param name="defaultPortName">The default Port name.</param>
+    /// <returns>The new Port name or the default if none is selected.</returns>
+    public static string SetPortName(string defaultPortName)
+    {
+        Console.WriteLine("Available Ports:");
+        foreach (string s in SerialPort.GetPortNames())
+        {
+            Console.WriteLine("   {0}", s);
+        }
+
+        Console.Write("Enter COM port value (Default: {0}): ", defaultPortName);
+        var portName = Console.ReadLine();
+
+        if (portName != null)
+        {
+            if (portName == "" || !portName.ToLower().StartsWith("com"))
+            {
+                portName = defaultPortName;
+            }
+        }
+        return portName ?? defaultPortName;
+    }
+
+    public static void GenerateResponseFile()
+    {
+        if (!File.Exists(filePath))
+        {
+            using StreamWriter sw = File.CreateText(filePath);
         }
     }
 }
