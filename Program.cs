@@ -7,7 +7,7 @@ using System.IO.Ports;
 public class Program
 {
     static readonly DateTime currentDateTime = DateTime.Now;
-    static readonly string filePath = @$".\SerialPortResponseFiles\serialPortResponse_{currentDateTime.ToString("yyyyMMddHHmmss")}.txt";
+    static readonly string filePath = @$".\SerialPortResponseFiles\serialPortResponse_{currentDateTime.ToString("yyyy-MM-dd@HH-mm-ss")}.txt";
     static bool @continue;
     static SerialPort serialPort = new SerialPort();
     static Thread readThread;
