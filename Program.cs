@@ -90,6 +90,7 @@ public class Program
                         DateTime dateTimeNow = DateTime.Now;
                         string readValue = serialPort.ReadLine();
                         sw.WriteLine($"[{dateTimeNow.ToString("yyyy-MM-ddTHH:mm:ss.fff")}] {readValue}");
+                        Console.WriteLine($"[{dateTimeNow.ToString("yyyy-MM-ddTHH:mm:ss.fff")}] {readValue}");
                     }
                     catch (TimeoutException) { }
                 }
