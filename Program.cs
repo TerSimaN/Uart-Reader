@@ -10,11 +10,12 @@ public class Program
     static readonly string filePath = @$".\SerialPortResponseFiles\serialPortResponse_{currentDateTime.ToString("yyyyMMddHHmmss")}.txt";
     static bool @continue;
     static SerialPort serialPort = new SerialPort();
+    static Thread readThread;
 
     public static void Main()
     {
-        StringComparer stringComparer = StringComparer.OrdinalIgnoreCase;
-        Thread readThread = new Thread(Read);
+        ConsoleKeyInfo consoleKeyInfo;
+        readThread = new Thread(Read);
         GenerateResponseFile();
 
         // Create a new SerialPort object with default settings.
@@ -36,13 +37,16 @@ public class Program
         @continue = true;
         readThread.Start();
 
-        Console.WriteLine("Type QUIT to exit");
+        Console.WriteLine("Press 'X' to exit, or CTRL+C to interrupt the program.");
 
+        Console.CancelKeyPress += new ConsoleCancelEventHandler(OnKeyPress);
         while (@continue)
         {
-            var inputValue = Console.ReadLine();
+            consoleKeyInfo = Console.ReadKey(true);
 
-            if (stringComparer.Equals("quit", inputValue))
+            Console.WriteLine($"  Key pressed: {consoleKeyInfo.Key}");
+
+            if (consoleKeyInfo.Key == ConsoleKey.X)
             {
                 @continue = false;
             }
@@ -52,6 +56,23 @@ public class Program
         serialPort.Close();
     }
 
+    /// <summary>
+    /// Handles the interruption of the program from pressing CTRL+C.
+    /// </summary>
+    protected static void OnKeyPress(object sender, ConsoleCancelEventArgs args)
+    {
+        Console.WriteLine("The program has been interrupted.");
+        if (!args.Cancel)
+        {
+            @continue = false;
+            readThread.Join();
+            serialPort.Close();
+        }
+    }
+
+    /// <summary>
+    /// Reads from the serial port and writes to a file.
+    /// </summary>
     public static void Read()
     {
         if (!File.Exists(filePath))
@@ -102,6 +123,9 @@ public class Program
         return portName ?? defaultPortName;
     }
 
+    /// <summary>
+    /// Generates a serial port response file.
+    /// </summary>
     public static void GenerateResponseFile()
     {
         if (!File.Exists(filePath))
