@@ -6,22 +6,22 @@ using System.IO.Ports;
 
 public class Program
 {
+    static Thread readThread;
+    static SerialPort serialPort = new SerialPort();
+    static bool @continue;
     static readonly DateTime currentDateTime = DateTime.Now;
     static readonly string filePath = @$".\SerialPortResponseFiles\serialPortResponse_{currentDateTime.ToString("yyyy-MM-dd@HH-mm-ss")}.txt";
-    static bool @continue;
-    static SerialPort serialPort = new SerialPort();
-    static Thread readThread;
+    static readonly string portName = SetPortName(serialPort.PortName);
 
     public static void Main()
     {
         ConsoleKeyInfo consoleKeyInfo;
         readThread = new Thread(Read);
-        GenerateResponseFile();
 
         // Create a new SerialPort object with default settings.
         serialPort = new SerialPort
         {
-            PortName = SetPortName(serialPort.PortName),
+            PortName = portName,
             BaudRate = 9600,
             Parity = Parity.None,
             DataBits = 8,
@@ -71,29 +71,22 @@ public class Program
     }
 
     /// <summary>
-    /// Reads from the serial port and writes to a file.
+    /// Reads from the serial port and writes read content to a file.
     /// </summary>
     public static void Read()
     {
-        if (!File.Exists(filePath))
+        using (StreamWriter sw = File.CreateText(filePath))
         {
-            Console.WriteLine($"File {filePath} does not exist!");
-        }
-        else
-        {
-            using (StreamWriter sw = File.AppendText(filePath))
+            while (@continue)
             {
-                while (@continue)
+                try
                 {
-                    try
-                    {
-                        DateTime dateTimeNow = DateTime.Now;
-                        string readValue = serialPort.ReadLine();
-                        sw.WriteLine($"[{dateTimeNow.ToString("yyyy-MM-ddTHH:mm:ss.fff")}] {readValue}");
-                        Console.WriteLine($"[{dateTimeNow.ToString("yyyy-MM-ddTHH:mm:ss.fff")}] {readValue}");
-                    }
-                    catch (TimeoutException) { }
+                    DateTime dateTimeNow = DateTime.Now;
+                    string readValue = serialPort.ReadLine();
+                    sw.WriteLine($"[{dateTimeNow.ToString("yyyy-MM-ddTHH:mm:ss.fff")}] {readValue}");
+                    Console.WriteLine($"[{dateTimeNow.ToString("yyyy-MM-ddTHH:mm:ss.fff")}] {readValue}");
                 }
+                catch (TimeoutException) { }
             }
         }
     }
@@ -122,16 +115,5 @@ public class Program
             }
         }
         return portName ?? defaultPortName;
-    }
-
-    /// <summary>
-    /// Generates a serial port response file.
-    /// </summary>
-    public static void GenerateResponseFile()
-    {
-        if (!File.Exists(filePath))
-        {
-            using StreamWriter sw = File.CreateText(filePath);
-        }
     }
 }
