@@ -1,22 +1,34 @@
-﻿// Create a project with the .NET 7 C# Console App template.
-// Run 'dotnet add package System.IO.Ports --version 7.0.0' in the console.
-// Replace the code in Program.cs with this code.
-
-using System.IO.Ports;
+﻿using System.IO.Ports;
 
 public class Program
 {
-    static Thread readThread;
-    static SerialPort serialPort = new SerialPort();
-    static bool @continue;
-    static readonly DateTime currentDateTime = DateTime.Now;
-    static readonly string filePath = @$".\SerialPortResponseFiles\serialPortResponse_{currentDateTime.ToString("yyyy-MM-dd@HH-mm-ss")}.txt";
-    static readonly string portName = SetPortName(serialPort.PortName);
+    static private Thread? readThread;
+    static private SerialPort serialPort = new SerialPort();
+    static private ISerialPortDataWriterStrategy? serialPortDataWriterStrategy;
+    static private bool @continue;
+    static private string? portName;
 
-    public static void Main()
+    /// <summary>
+    /// Entrypoint for the application.
+    /// </summary>
+    /// <param name="args">Command-line arguments i.e. [<COMn>] [<OutputFile>]</param>
+    public static void Main(string[] args)
     {
         ConsoleKeyInfo consoleKeyInfo;
         readThread = new Thread(Read);
+
+        if (args.Length < 1)
+        {
+            portName = SetPortName(serialPort.PortName);
+            serialPortDataWriterStrategy = new ConsoleSerialPortDataWriterStrategy();
+        }
+        else
+        {
+            portName = args[0];
+            serialPortDataWriterStrategy = args.Length < 2 ? 
+                new ConsoleSerialPortDataWriterStrategy() : 
+                new FileSerialPortDataWriterStrategy(args[1]);
+        }
 
         // Create a new SerialPort object with default settings.
         serialPort = new SerialPort
@@ -59,13 +71,13 @@ public class Program
     /// <summary>
     /// Handles the interruption of the program from pressing CTRL+C.
     /// </summary>
-    protected static void OnKeyPress(object sender, ConsoleCancelEventArgs args)
+    protected static void OnKeyPress(object? sender, ConsoleCancelEventArgs args)
     {
         Console.WriteLine("The program has been interrupted.");
         if (!args.Cancel)
         {
             @continue = false;
-            readThread.Join();
+            readThread?.Join();
             serialPort.Close();
         }
     }
@@ -75,19 +87,14 @@ public class Program
     /// </summary>
     public static void Read()
     {
-        using (StreamWriter sw = File.CreateText(filePath))
+        while (@continue)
         {
-            while (@continue)
+            try
             {
-                try
-                {
-                    DateTime dateTimeNow = DateTime.Now;
-                    string readValue = serialPort.ReadLine();
-                    sw.WriteLine($"[{dateTimeNow.ToString("yyyy-MM-ddTHH:mm:ss.fff")}] {readValue}");
-                    Console.WriteLine($"[{dateTimeNow.ToString("yyyy-MM-ddTHH:mm:ss.fff")}] {readValue}");
-                }
-                catch (TimeoutException) { }
+                string readValue = serialPort.ReadLine();
+                serialPortDataWriterStrategy?.Write(readValue);
             }
+            catch (TimeoutException) { }
         }
     }
 
