@@ -4,7 +4,7 @@ A simple application for reading information sent trough a Universal Asynchronou
 
 ## Requirements
 
-* .NET v7.0 or newer
+* .NET v10.0 or newer
 
 ## How to use it
 
